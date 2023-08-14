@@ -1,6 +1,8 @@
+// Import required modules
 const inquirer = require("inquirer")
 const mysql = require("mysql2")
 
+// Create a connection to the MySQL database
 const db = mysql.createConnection({
     host: "localhost",
     user: "root",
@@ -8,34 +10,52 @@ const db = mysql.createConnection({
     database: "employee_tracker"
 })
 
+// Function to view departments
 function viewDepartments() {
+
+    // Query the database to fetch department names
     db.query("SELECT department.name AS department FROM department", (err, results) => {
         if (err) throw err;
 
+        // Display department names in a table format
         console.table(results);
+        // Prompt the user to continue using the application
         startApp();
     });
 }
 
+// Function to view roles
 function viewRoles() {
+
+    // Query the database to fetch role information along with department names
     db.query("SELECT role.title AS role, role.salary, department.name AS department_name FROM role INNER JOIN department ON role.department_id = department.id", (err, results) => {
         if (err) throw err;
 
+        // Display role information in a table format
         console.table(results);
+        // Prompt the user to continue using the application
         startApp();
     });
 }
 
+// Function to view employees
 function viewEmployees() {
+
+    // Query the database to fetch employee information along with related role and manager information
     db.query("SELECT employee.first_name, employee.last_name , role.title AS job_title, department.name AS department, CONCAT(manager.first_name, ' ', manager.last_name) AS manager FROM employee LEFT JOIN role ON employee.role_id = role.id LEFT JOIN department ON role.department_id = department.id LEFT JOIN employee manager ON employee.manager_id = manager.id", (err, results) => {
         if (err) throw err;
 
+        // Display employee information in a table format
         console.table(results);
+        // Prompt the user to continue using the application
         startApp();
     });
 }
 
+// Function to add a new department
 function addDepartment() {
+
+    // Prompt the user to enter the name of the new department
     inquirer.prompt([
         {
             type: "input",
@@ -44,19 +64,24 @@ function addDepartment() {
         }
     ])
         .then((answer) => {
+            // Insert the new department into the database
             db.query("INSERT INTO department (name) VALUES (?)", answer.name, (err, results) => {
                 if (err) throw err;
                 console.log("Department added successfully!");
+                // Prompt the user to continue using the application
                 startApp();
             });
         });
 }
 
+// Function to add a new role
 function addRole() {
 
+    // Query the database to fetch existing department data
     db.query("SELECT * FROM department", (err, departments) => {
         if (err) throw err;
 
+        // Create choices for department selection using retrieved data
         const departmentChoices = departments.map((department) => {
             return {
                 name: department.name,
@@ -64,6 +89,7 @@ function addRole() {
             };
         });
 
+        // Prompt the user to enter details for the new role
         inquirer.prompt([
             {
                 type: "input",
@@ -83,6 +109,7 @@ function addRole() {
             }
         ])
             .then((answer) => {
+                // Insert the new role into the database
                 db.query("INSERT INTO role SET ?",
                     {
                         title: answer.title,
@@ -98,10 +125,14 @@ function addRole() {
     });
 }
 
+// Function to add a new employee
 function addEmployee() {
+
+    // Query the database to fetch existing role data
     db.query("SELECT * FROM role", (err, roles) => {
         if (err) throw err;
 
+        // Create choices for role selection using retrieved data
         const roleChoices = roles.map((role) => {
             return {
                 name: role.title,
@@ -109,9 +140,11 @@ function addEmployee() {
             };
         });
 
+         // Query the database to fetch existing employee data
         db.query("SELECT * FROM employee", (err, employees) => {
             if (err) throw err;
 
+            // Create choices for manager selection using retrieved data
             const managerChoices = [
                 {
                     name: "None",
@@ -125,6 +158,7 @@ function addEmployee() {
                 })
             ];
 
+            // Prompt the user to enter details for the new employee
             inquirer.prompt([
                 {
                     type: "input",
@@ -149,6 +183,7 @@ function addEmployee() {
                     choices: managerChoices
                 }
             ])
+                // Insert the new employee into the database
                 .then((answer) => {
                     db.query("INSERT INTO employee SET ?",
                         {
@@ -167,10 +202,14 @@ function addEmployee() {
     });
 }
 
+// Function to update an employee's role
 function updateEmployeeRole() {
+    
+    // Query the database to fetch existing employee data
     db.query("SELECT * FROM employee", (err, employees) => {
         if (err) throw err;
 
+        // Create choices for employee selection using retrieved data
         const employeeChoices = employees.map((employee) => {
             return {
                 name: `${employee.first_name} ${employee.last_name}`,
@@ -178,16 +217,18 @@ function updateEmployeeRole() {
             };
         });
 
+         // Query the database to fetch existing role data
         db.query("SELECT * FROM role", (err, roles) => {
             if (err) throw err;
 
+            // Create choices for role selection using retrieved data
             const roleChoices = roles.map((role) => {
                 return {
                     name: role.title,
                     value: role.id
                 };
             });
-
+            // Prompt the user to select an employee and a new role
             inquirer.prompt([
                 {
                     type: "list",
@@ -202,6 +243,7 @@ function updateEmployeeRole() {
                     choices: roleChoices
                 }
             ])
+                 // Update the employee's role in the database
                 .then((answer) => {
                     db.query("UPDATE employee SET role_id = ? WHERE id = ?",
                         [answer.new_role_id, answer.employee_id],
@@ -215,6 +257,7 @@ function updateEmployeeRole() {
     });
 }
 
+// Function to start the application and display the main menu
 function startApp() {
     inquirer
         .prompt([
@@ -235,6 +278,7 @@ function startApp() {
             }
         ])
         .then((answers) => {
+            // Based on the user's choice, invoke corresponding functions
             switch (answers.choice) {
                 case "View all Departments":
                     viewDepartments();
@@ -259,15 +303,16 @@ function startApp() {
                     break;
                 case "Exit":
                     console.log("Goodbye!");
-                    db.end();
+                    db.end(); // Close the database connection
                     break;
             }
         })
         .catch((error) => {
             console.error(error);
-            db.end();
+            db.end(); // Close the database connection in case of an error
         });
 }
 
+// Start the application by calling the startApp function
 startApp();
 
